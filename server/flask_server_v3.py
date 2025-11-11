@@ -11,23 +11,10 @@ GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
 
 if not GOOGLE_API_KEY:
     print("\n" + "="*60)
-    print("❌ ОШИБКА: GOOGLE_API_KEY не найден!")
-    print("="*60)
-    print("\n📝 Пожалуйста, создайте файл .env в корневой папке проекта")
-    print("   Путь: " + os.path.abspath('.env'))
-    print("\n📝 Содержимое файла .env должно быть:")
-    print("   GOOGLE_API_KEY=ваш_api_ключ_здесь")
-    print("\n🔑 Как получить ключ:")
-    print("   1. Перейдите на: https://console.cloud.google.com/")
-    print("   2. Создайте новый проект")
-    print("   3. Включите APIs: Places, Maps, Geocoding, Directions")
-    print("   4. Создайте ключ в 'APIs & Services' → 'Credentials'")
-    print("   5. Включите Billing!")
-    print("   6. Скопируйте ключ в .env файл")
-    print("\n" + "="*60 + "\n")
-    sys.exit(1)
+    print("⚠️  ВНИМАНИЕ: GOOGLE_API_KEY не установлена!")
+    print("="*60 + "\n")
 
-print("✅ GOOGLE_API_KEY загружен успешно!\n")
+print("✅ Инициализация приложения...\n")
 
 # Теперь импортируем остальное
 from flask import Flask, request, jsonify, send_from_directory
@@ -39,17 +26,36 @@ from datetime import datetime
 
 # ==================== FLASK APP SETUP ====================
 
+# Определяем правильный путь к папке public
+# os.path.dirname(__file__) = директория где находится этот файл
+# По структуре проекта public находится на один уровень выше
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PUBLIC_DIR = os.path.join(BASE_DIR, '..', 'public')
+PUBLIC_DIR = os.path.abspath(PUBLIC_DIR)
+
+print(f"📁 Корневая папка: {BASE_DIR}")
+print(f"📁 Папка public: {PUBLIC_DIR}")
+print(f"✓ Папка существует: {os.path.exists(PUBLIC_DIR)}")
+
+if os.path.exists(PUBLIC_DIR):
+    files = os.listdir(PUBLIC_DIR)
+    print(f"📂 Файлы в public: {files}\n")
+
 # Инициализируем Flask с папкой public для статических файлов
-app = Flask(__name__, static_folder='public', static_url_path='')
+app = Flask(__name__, static_folder=PUBLIC_DIR, static_url_path='')
 CORS(app)
 
 # Initialize Google Maps client
-try:
-    gmaps = googlemaps.Client(key=GOOGLE_API_KEY)
-    print("✅ Google Maps клиент инициализирован\n")
-except Exception as e:
-    print(f"❌ Ошибка при инициализации Google Maps: {str(e)}")
-    sys.exit(1)
+if GOOGLE_API_KEY:
+    try:
+        gmaps = googlemaps.Client(key=GOOGLE_API_KEY)
+        print("✅ Google Maps клиент инициализирован\n")
+    except Exception as e:
+        print(f"❌ Ошибка при инициализации Google Maps: {str(e)}\n")
+        gmaps = None
+else:
+    gmaps = None
+    print("⚠️  Google Maps не инициализирован (нет API ключа)\n")
 
 # Logging
 logging.basicConfig(level=logging.INFO)
@@ -60,12 +66,20 @@ logger = logging.getLogger(__name__)
 @app.route('/')
 def serve_index():
     """Serve index.html (фронтенд)"""
-    return send_from_directory('public', 'index.html')
+    try:
+        return send_from_directory(PUBLIC_DIR, 'index.html')
+    except Exception as e:
+        logger.error(f"Error serving index.html: {str(e)}")
+        return jsonify({'error': 'index.html not found', 'tried_path': PUBLIC_DIR}), 404
 
 @app.route('/<path:path>')
 def serve_static(path):
     """Serve static files (CSS, JS, images, etc.)"""
-    return send_from_directory('public', path)
+    try:
+        return send_from_directory(PUBLIC_DIR, path)
+    except Exception as e:
+        logger.warning(f"File not found: {path}")
+        return jsonify({'error': f'{path} not found'}), 404
 
 # ==================== HELPER FUNCTIONS ====================
 
