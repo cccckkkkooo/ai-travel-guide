@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = 'http://localhost:5000';
+const API_URL = 'https://ai-travel-guide-81885629240.europe-west1.run.app';
 const API_ENDPOINTS = {
     generateItinerary: '/api/generate-itinerary',
     searchAttractions: '/api/search-attractions',
