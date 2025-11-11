@@ -30,14 +30,17 @@ if not GOOGLE_API_KEY:
 print("✅ GOOGLE_API_KEY загружен успешно!\n")
 
 # Теперь импортируем остальное
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import googlemaps
 import logging
 import requests
 from datetime import datetime
 
-app = Flask(__name__)
+# ==================== FLASK APP SETUP ====================
+
+# Инициализируем Flask с папкой public для статических файлов
+app = Flask(__name__, static_folder='public', static_url_path='')
 CORS(app)
 
 # Initialize Google Maps client
@@ -51,6 +54,18 @@ except Exception as e:
 # Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# ==================== STATIC FILES & FRONTEND ====================
+
+@app.route('/')
+def serve_index():
+    """Serve index.html (фронтенд)"""
+    return send_from_directory('public', 'index.html')
+
+@app.route('/<path:path>')
+def serve_static(path):
+    """Serve static files (CSS, JS, images, etc.)"""
+    return send_from_directory('public', path)
 
 # ==================== HELPER FUNCTIONS ====================
 
@@ -197,24 +212,6 @@ def get_directions_info(origin, destination, mode='transit'):
         return None
 
 # ==================== API ENDPOINTS ====================
-
-@app.route('/', methods=['GET'])
-def index():
-    """Root endpoint - Welcome message"""
-    return jsonify({
-        'status': 'success',
-        'message': '🌍 AI Travel Guide API - Добро пожаловать!',
-        'version': '1.0.0',
-        'available_endpoints': {
-            'health_check': '/api/health',
-            'search_attractions': '/api/search-attractions',
-            'search_restaurants': '/api/search-restaurants',
-            'get_directions': '/api/get-directions',
-            'generate_itinerary': '/api/generate-itinerary',
-            'city_tips': '/api/city-tips',
-            'geocode': '/api/geocode'
-        }
-    }), 200
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
@@ -438,19 +435,67 @@ def generate_itinerary():
         
         logger.info(f"Generating itinerary for {city}")
         
-        # Get attractions
-        attractions_response = search_attractions()
-        attractions_data = attractions_response[0].get_json() if isinstance(attractions_response, tuple) else attractions_response.get_json()
+        # Get attractions (call the function directly, not the endpoint)
+        geocode_result = geocode_address(city)
+        if not geocode_result:
+            return jsonify({'error': f'Could not find city: {city}'}), 404
         
-        if 'error' in attractions_data:
-            return jsonify(attractions_data), 404
+        location = f"{geocode_result['lat']},{geocode_result['lng']}"
         
-        attractions = attractions_data.get('attractions', [])
+        # Search for attractions
+        attractions = []
+        search_queries = [
+            f'tourist attractions in {city}',
+            f'museums in {city}',
+            f'historical sites in {city}',
+        ]
+        
+        seen_place_ids = set()
+        for query in search_queries:
+            places = text_search_places(query, location)
+            for place in places:
+                if place['place_id'] not in seen_place_ids:
+                    seen_place_ids.add(place['place_id'])
+                    details = get_place_details(place['place_id'])
+                    if details:
+                        attractions.append({
+                            'place_id': place['place_id'],
+                            'name': details['name'],
+                            'rating': details['rating'],
+                            'address': details['formatted_address'],
+                            'photos': details['photos']
+                        })
+                        if len(attractions) >= 12:
+                            break
+            if len(attractions) >= 12:
+                break
         
         # Get restaurants
-        restaurants_response = search_restaurants()
-        restaurants_data = restaurants_response[0].get_json() if isinstance(restaurants_response, tuple) else restaurants_response.get_json()
-        restaurants = restaurants_data.get('restaurants', [])
+        restaurants = []
+        search_queries = [
+            f'best restaurants in {city}',
+            f'top rated restaurants in {city}'
+        ]
+        
+        seen_place_ids = set()
+        for query in search_queries:
+            places = text_search_places(query, location)
+            for place in places:
+                if place['place_id'] not in seen_place_ids:
+                    seen_place_ids.add(place['place_id'])
+                    details = get_place_details(place['place_id'])
+                    if details:
+                        restaurants.append({
+                            'place_id': place['place_id'],
+                            'name': details['name'],
+                            'rating': details['rating'],
+                            'address': details['formatted_address'],
+                            'photos': details['photos']
+                        })
+                        if len(restaurants) >= 8:
+                            break
+            if len(restaurants) >= 8:
+                break
         
         # Calculate trip duration
         if start_date and end_date:
@@ -555,6 +600,5 @@ def server_error(error):
 # ==================== MAIN ====================
 
 if __name__ == '__main__':
-    import os
     port = int(os.getenv('PORT', 8080))
     app.run(debug=False, host='0.0.0.0', port=port)
