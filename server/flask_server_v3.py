@@ -35,6 +35,7 @@ from flask_cors import CORS
 import googlemaps
 import logging
 import requests
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
@@ -197,15 +198,33 @@ def get_directions_info(origin, destination, mode='transit'):
 
 # ==================== API ENDPOINTS ====================
 
+@app.route('/', methods=['GET'])
+def index():
+    """Root endpoint - Welcome message"""
+    return jsonify({
+        'status': 'success',
+        'message': '🌍 AI Travel Guide API - Добро пожаловать!',
+        'version': '1.0.0',
+        'available_endpoints': {
+            'health_check': '/api/health',
+            'search_attractions': '/api/search-attractions',
+            'search_restaurants': '/api/search-restaurants',
+            'get_directions': '/api/get-directions',
+            'generate_itinerary': '/api/generate-itinerary',
+            'city_tips': '/api/city-tips',
+            'geocode': '/api/geocode'
+        }
+    }), 200
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'ok',
-        'message': 'AI Travel Guide server is running',
+        'message': 'AI Travel Guide server is running ✅',
         'api_configured': True,
-        'timestamp': __import__('datetime').datetime.now().isoformat()
-    })
+        'timestamp': datetime.now().isoformat()
+    }), 200
 
 @app.route('/api/geocode', methods=['POST'])
 def geocode_endpoint():
@@ -220,7 +239,7 @@ def geocode_endpoint():
         result = geocode_address(address)
         
         if result:
-            return jsonify(result)
+            return jsonify(result), 200
         else:
             return jsonify({'error': 'Could not geocode address'}), 404
             
@@ -297,7 +316,7 @@ def search_attractions():
                 break
         
         logger.info(f"Found {len(attractions)} attractions for {city}")
-        return jsonify({'attractions': attractions})
+        return jsonify({'attractions': attractions}), 200
         
     except Exception as e:
         logger.error(f"Search attractions error: {str(e)}")
@@ -374,7 +393,7 @@ def search_restaurants():
                 break
         
         logger.info(f"Found {len(restaurants)} restaurants for {city}")
-        return jsonify({'restaurants': restaurants})
+        return jsonify({'restaurants': restaurants}), 200
         
     except Exception as e:
         logger.error(f"Search restaurants error: {str(e)}")
@@ -395,7 +414,7 @@ def get_directions():
         directions = get_directions_info(origin, destination, mode)
         
         if directions:
-            return jsonify(directions)
+            return jsonify(directions), 200
         else:
             return jsonify({'error': 'Could not get directions'}), 404
             
@@ -421,7 +440,7 @@ def generate_itinerary():
         
         # Get attractions
         attractions_response = search_attractions()
-        attractions_data = attractions_response.get_json()
+        attractions_data = attractions_response[0].get_json() if isinstance(attractions_response, tuple) else attractions_response.get_json()
         
         if 'error' in attractions_data:
             return jsonify(attractions_data), 404
@@ -430,12 +449,11 @@ def generate_itinerary():
         
         # Get restaurants
         restaurants_response = search_restaurants()
-        restaurants_data = restaurants_response.get_json()
+        restaurants_data = restaurants_response[0].get_json() if isinstance(restaurants_response, tuple) else restaurants_response.get_json()
         restaurants = restaurants_data.get('restaurants', [])
         
         # Calculate trip duration
         if start_date and end_date:
-            from datetime import datetime
             start = datetime.strptime(start_date, '%Y-%m-%d')
             end = datetime.strptime(end_date, '%Y-%m-%d')
             duration = (end - start).days + 1
@@ -443,8 +461,8 @@ def generate_itinerary():
             duration = 3
         
         # Distribute activities across days
-        activities_per_day = max(3, len(attractions) // duration)
-        restaurants_per_day = max(2, len(restaurants) // duration)
+        activities_per_day = max(3, len(attractions) // duration) if duration > 0 else 3
+        restaurants_per_day = max(2, len(restaurants) // duration) if duration > 0 else 2
         
         itinerary = []
         
@@ -474,7 +492,7 @@ def generate_itinerary():
         }
         
         logger.info(f"Generated itinerary: {duration} days, {len(attractions)} attractions")
-        return jsonify(result)
+        return jsonify(result), 200
         
     except Exception as e:
         logger.error(f"Generate itinerary error: {str(e)}")
@@ -491,6 +509,7 @@ def city_tips():
             return jsonify({'error': 'City is required'}), 400
         
         tips = {
+            'city': city,
             'safety_advice': [
                 'Keep valuables secure in crowded areas',
                 'Use official transportation services',
@@ -517,7 +536,7 @@ def city_tips():
             ]
         }
         
-        return jsonify(tips)
+        return jsonify(tips), 200
         
     except Exception as e:
         logger.error(f"City tips error: {str(e)}")
@@ -527,17 +546,15 @@ def city_tips():
 
 @app.errorhandler(404)
 def not_found(error):
-    return jsonify({'error': 'Endpoint not found'}), 404
+    return jsonify({'error': 'Endpoint not found', 'status': 404}), 404
 
 @app.errorhandler(500)
 def server_error(error):
-    return jsonify({'error': 'Internal server error'}), 500
+    return jsonify({'error': 'Internal server error', 'status': 500}), 500
 
 # ==================== MAIN ====================
-
 
 if __name__ == '__main__':
     import os
     port = int(os.getenv('PORT', 8080))
     app.run(debug=False, host='0.0.0.0', port=port)
-
