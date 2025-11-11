@@ -1,4 +1,3 @@
-
 import os
 import sys
 from dotenv import load_dotenv
@@ -536,14 +535,9 @@ def server_error(error):
 
 # ==================== MAIN ====================
 
+
 if __name__ == '__main__':
-    print("="*60)
-    print("🚀 AI Travel Guide Flask Server Starting...")
-    print("="*60)
-    print(f"📍 Server: http://localhost:5000")
-    print(f"🔍 Health check: http://localhost:5000/api/health")
-    print(f"📚 See API_EXAMPLES.md for documentation")
-    print("="*60)
-    print("\n✨ Сервер готов к работе!\n")
-    
-    app.run(debug=True, host='localhost', port=5000, use_reloader=False)
+    import os
+    port = int(os.getenv('PORT', 8080))
+    app.run(debug=False, host='0.0.0.0', port=port)
+
