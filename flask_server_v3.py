@@ -26,11 +26,8 @@ from datetime import datetime
 
 # ==================== FLASK APP SETUP ====================
 
-if os.getenv('PORT'):  # Мы на Cloud Run
-    PUBLIC_DIR = '/app/public'
-else:  # Локальная разработка
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    PUBLIC_DIR = os.path.join(BASE_DIR, 'public')
+# На Cloud Run папка public всегда в /app/public
+PUBLIC_DIR = '/app/public'
 
 print(f"📁 Папка public: {PUBLIC_DIR}")
 print(f"✓ Папка существует: {os.path.exists(PUBLIC_DIR)}")
