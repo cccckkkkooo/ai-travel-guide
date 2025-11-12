@@ -10,15 +10,15 @@ COPY requirements.txt .
 # Устанавливаем зависимости
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем ВЕСЬ код
+# Копируем весь код приложения
 COPY . .
 
-# ДОБАВЬ ЭТИ СТРОКИ - копируем явно папку public
-RUN mkdir -p /app/public
-COPY public/ /app/public/
-
-# Проверяем что файлы скопировались
-RUN ls -la /app/public/ && echo "✅ Public folder copied successfully"
+# Если папка public не существует - создаём её и добавляем простой index.html
+RUN mkdir -p /app/public && \
+    if [ ! -f /app/public/index.html ]; then \
+    echo '<html><body><h1>🌍 AI Travel Guide API</h1><p>API работает! Используй endpoints:</p><ul><li>/api/health</li><li>/api/search-attractions</li><li>/api/search-restaurants</li></ul></body></html>' > /app/public/index.html; \
+    fi && \
+    ls -la /app/public/
 
 # Google Cloud Run использует порт 8080
 EXPOSE 8080
