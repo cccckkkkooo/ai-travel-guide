@@ -27,7 +27,7 @@ from datetime import datetime
 # ==================== FLASK APP SETUP ====================
 
 # На Cloud Run папка public всегда в /app/public
-PUBLIC_DIR = '/app/public'
+PUBLIC_DIR = '/app'
 
 print(f"📁 Папка public: {PUBLIC_DIR}")
 print(f"✓ Папка существует: {os.path.exists(PUBLIC_DIR)}")
