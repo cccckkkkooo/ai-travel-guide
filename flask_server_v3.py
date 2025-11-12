@@ -26,17 +26,17 @@ from datetime import datetime
 
 # ==================== FLASK APP SETUP ====================
 
-# На Cloud Run папка public всегда в /app/public
+# Ищем файлы в корне /app (БЕЗ подпапок)
 PUBLIC_DIR = '/app'
 
-print(f"📁 Папка public: {PUBLIC_DIR}")
+print(f"📁 Папка статических файлов: {PUBLIC_DIR}")
 print(f"✓ Папка существует: {os.path.exists(PUBLIC_DIR)}")
 
 if os.path.exists(PUBLIC_DIR):
-    files = os.listdir(PUBLIC_DIR)
-    print(f"📂 Файлы в public: {files}\n")
+    files = [f for f in os.listdir(PUBLIC_DIR) if f.endswith(('.html', '.js', '.css', '.json'))]
+    print(f"📂 Найдено файлов: {files}\n")
 
-# Инициализируем Flask с папкой public для статических файлов
+# Инициализируем Flask с папкой PUBLIC_DIR для статических файлов
 app = Flask(__name__, static_folder=PUBLIC_DIR, static_url_path='')
 CORS(app)
 
