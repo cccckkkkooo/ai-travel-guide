@@ -26,14 +26,12 @@ from datetime import datetime
 
 # ==================== FLASK APP SETUP ====================
 
-# Определяем правильный путь к папке public
-# os.path.dirname(__file__) = директория где находится этот файл
-# По структуре проекта public находится на один уровень выше
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PUBLIC_DIR = os.path.join(BASE_DIR, '..', 'public')
-PUBLIC_DIR = os.path.abspath(PUBLIC_DIR)
+if os.getenv('PORT'):  # Мы на Cloud Run
+    PUBLIC_DIR = '/app/public'
+else:  # Локальная разработка
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    PUBLIC_DIR = os.path.join(BASE_DIR, 'public')
 
-print(f"📁 Корневая папка: {BASE_DIR}")
 print(f"📁 Папка public: {PUBLIC_DIR}")
 print(f"✓ Папка существует: {os.path.exists(PUBLIC_DIR)}")
 
